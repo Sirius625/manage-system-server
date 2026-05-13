@@ -811,4 +811,127 @@ router.post('/songs/play-sync/:songId', async (req, res) => {
   }
 });
 
+// ==================== 图片管理接口 ====================
+
+/**
+ * 保存上传的图片文件
+ */
+const saveImageFile = (base64Data) => {
+  const matches = String(base64Data).match(/^data:(image\/\w+);base64,(.+)$/)
+  if (!matches) {
+    throw new Error('图片数据格式不正确')
+  }
+
+  const ext = matches[1].split('/')[1]
+  const buffer = Buffer.from(matches[2], 'base64')
+  const uploadDir = path.resolve(__dirname, '..', 'uploads', 'images')
+  fs.mkdirSync(uploadDir, { recursive: true })
+
+  const fileName = `image-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
+  const filePath = path.join(uploadDir, fileName)
+  fs.writeFileSync(filePath, buffer)
+
+  return {
+    url: `/uploads/images/${fileName}`,
+    path: filePath
+  }
+}
+
+/**
+ * 上传图片
+ * POST /api/images/upload
+ */
+router.post('/images/upload', async (req, res) => {
+  try {
+    const { title, description, imageBase64 } = req.body
+    if (!title || !imageBase64) {
+      return res.status(400).json({ message: '缺少必要参数: title, imageBase64' })
+    }
+
+    // 从 JWT 获取上传者
+    let author = '匿名'
+    if (req.user && req.user.username) {
+      const users = await queryAsync('SELECT name FROM users WHERE name = ?', [req.user.username])
+      if (users.length > 0) {
+        author = users[0].name
+      }
+    }
+
+    // 保存图片文件
+    const { url, path: filePath } = saveImageFile(imageBase64)
+
+    // 插入数据库
+    const result = await queryAsync(
+      'INSERT INTO images (title, description, url, path, author) VALUES (?, ?, ?, ?, ?)',
+      [title, description || '', url, filePath, author]
+    )
+
+    const inserted = await queryAsync('SELECT * FROM images WHERE id = ?', [result.insertId])
+    res.json({ data: inserted[0] })
+  } catch (err) {
+    res.status(500).json({ message: err.message })
+  }
+})
+
+/**
+ * 获取图片列表
+ * GET /api/images
+ */
+router.get('/images', async (req, res) => {
+  try {
+    const page = Number(req.query.page) || 1
+    const pageSize = Number(req.query.pageSize) || 20
+    const offset = (page - 1) * pageSize
+    let conditions = ['1=1']
+    const params = []
+
+    if (req.query.keyword) {
+      const keyword = `%${String(req.query.keyword).trim()}%`
+      conditions.push('(title LIKE ? OR description LIKE ?)')
+      params.push(keyword, keyword)
+    }
+
+    const where = `WHERE ${conditions.join(' AND ')}`
+    const totalResult = await queryAsync(`SELECT COUNT(*) AS total FROM images ${where}`, params)
+    const rows = await queryAsync(
+      `SELECT * FROM images ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+      [...params, pageSize, offset]
+    )
+
+    res.json({ data: rows, total: totalResult[0].total || 0 })
+  } catch (err) {
+    res.status(500).json({ message: err.message })
+  }
+})
+
+/**
+ * 删除图片
+ * DELETE /api/images/:id
+ */
+router.delete('/images/:id', async (req, res) => {
+  try {
+    const id = Number(req.params.id)
+    const images = await queryAsync('SELECT * FROM images WHERE id = ?', [id])
+    if (!images.length) {
+      return res.status(404).json({ message: '图片未找到' })
+    }
+
+    // 删除物理文件
+    const image = images[0]
+    try {
+      if (fs.existsSync(image.path)) {
+        fs.unlinkSync(image.path)
+      }
+    } catch (e) {
+      console.warn('删除图片文件失败:', e.message)
+    }
+
+    // 删除数据库记录
+    await queryAsync('DELETE FROM images WHERE id = ?', [id])
+    res.json({ success: true })
+  } catch (err) {
+    res.status(500).json({ message: err.message })
+  }
+})
+
 module.exports = router

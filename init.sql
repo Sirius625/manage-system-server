@@ -130,3 +130,15 @@ INSERT IGNORE INTO after_sales (id, order_id, `user`, type, reason, status) VALU
 (4001, 1001, '王小明', '退货', '商品损坏', '待处理'),
 (4002, 1002, '张婷婷', '换货', '尺寸不合适', '处理中'),
 (4003, 1003, '李大锤', '咨询', '配送询问', '已完成');
+
+-- 图片管理表
+CREATE TABLE IF NOT EXISTS images (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  title VARCHAR(255) NOT NULL COMMENT '图片标题',
+  description TEXT DEFAULT NULL COMMENT '图片描述',
+  url VARCHAR(500) NOT NULL COMMENT '图片访问URL',
+  path VARCHAR(500) NOT NULL COMMENT '图片存储路径',
+  author VARCHAR(100) DEFAULT '' COMMENT '上传者',
+  likes INT DEFAULT 0 COMMENT '点赞数',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '上传时间'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='图片管理表';

@@ -25,6 +25,8 @@ app.use(
     '/api/auth/login',
     '/api/auth/register',
     '/api/status',
+    '/api/images',
+    { url: /^\/api\/images\/\d+$/, methods: ['DELETE'] },
     '/'
   ] 
 }))
