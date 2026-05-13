@@ -481,12 +481,19 @@ router.get('/songs', async (req, res) => {
   const pageSize = parseInt(req.query.pageSize) || 10;
   const { keyword } = req.query;
 
+  // 从 JWT 获取真实 userId
+  const userId = await getUserIdFromToken(req);
+
+  if (!userId) {
+    return res.status(401).json({ code: 401, message: '未授权，请先登录' });
+  }
+
   // 计算偏移量
   const offset = (page - 1) * pageSize;
 
   let sql = 'SELECT * FROM liked_songs';
-  const conditions = [];
-  const values = [];
+  const conditions = ['user_id = ?'];
+  const values = [userId];
 
   try {
     if (keyword) {
@@ -501,13 +508,11 @@ router.get('/songs', async (req, res) => {
       }
     }
 
-    if (conditions.length > 0) {
-      sql += ' WHERE ' + conditions.join(' AND ');
-    }
+    sql += ' WHERE ' + conditions.join(' AND ');
     
     // 先查询总数
-    const countSql = 'SELECT COUNT(*) as total FROM liked_songs' + (conditions.length > 0 ? ' WHERE ' + conditions.join(' AND ') : '');
-    const [countResult] = await queryAsync(countSql, values);
+    const countSql = 'SELECT COUNT(*) as total FROM liked_songs WHERE ' + conditions.join(' AND ');
+    const countResult = await queryAsync(countSql, values);
     const total = countResult[0]?.total;
 
     // 再查询分页数据
@@ -531,19 +536,32 @@ router.get('/songs', async (req, res) => {
 
 // 新增/删除接口：根据 ID 存在性自动切换操作
 
+// 辅助函数：从 JWT 获取用户ID
+const getUserIdFromToken = async (req) => {
+  if (req.user && req.user.username) {
+    const users = await queryAsync('SELECT id FROM users WHERE name = ?', [req.user.username]);
+    if (users.length > 0) return users[0].id;
+  }
+  return null;
+};
+
 router.post('/songs', async (req, res) => {
   const { id, name, ar, al, dt } = req.body;
-  // 实际项目中应从 req.user 或 session 获取 userId
-  const userId = req.user ? req.user.id : 1; 
+  // 从 JWT 获取真实 userId
+  const userId = await getUserIdFromToken(req);
+
+  if (!userId) {
+    return res.status(401).json({ code: 401, message: '未授权，请先登录' });
+  }
 
   if (!id) {
     return res.status(400).json({ code: 400, message: '缺少必要参数: id' });
   }
 
   try {
-    // 1. 检查歌曲是否已存在
-    const checkSql = 'SELECT id FROM liked_songs WHERE id = ?';
-    const existing = await queryAsync(checkSql, [id]);
+    // 1. 检查歌曲是否已存在（按用户区分）
+    const checkSql = 'SELECT id FROM liked_songs WHERE id = ? AND user_id = ?';
+    const existing = await queryAsync(checkSql, [id, userId]);
 
     if (existing && existing.length > 0) {
       // 2. 存在则删除
@@ -572,8 +590,12 @@ router.post('/songs', async (req, res) => {
  */
 router.post('/history', async (req, res) => {
   const { id, name, ar, al, dt } = req.body;
-  // 实际项目中应从 session/token 中获取真实 userId
-  const userId = req.user ? req.user.id : 1; 
+  // 从 JWT 获取真实 userId
+  const userId = await getUserIdFromToken(req);
+
+  if (!userId) {
+    return res.status(401).json({ code: 401, message: '未授权，请先登录' });
+  }
 
   if (!id || !name || !dt) {
     return res.status(400).json({ code: 400, message: '缺少必要参数: id, name, dt' });
@@ -614,8 +636,12 @@ router.get('/history', async (req, res) => {
   const pageSize = parseInt(req.query.pageSize) || 50;
   const { keyword } = req.query; // 搜索关键词
   
-  // 实际项目中应从 session/token 中获取真实 userId
-  const userId = req.user ? req.user.id : 1; 
+  // 从 JWT 获取真实 userId
+  const userId = await getUserIdFromToken(req);
+
+  if (!userId) {
+    return res.status(401).json({ code: 401, message: '未授权，请先登录' });
+  }
   
   // 计算偏移量 offset = (page - 1) * pageSize
   const offset = (page - 1) * pageSize;
@@ -682,8 +708,8 @@ router.get('/history', async (req, res) => {
  * DELETE /history/clear
  */
 router.delete('/history/clear', async (req, res) => {
-  // 实际项目中应从 session/token 中获取真实 userId
-  const userId = req.user ? req.user.id : 1;
+  // 从 JWT 获取真实 userId
+  const userId = await getUserIdFromToken(req);
 
   if (!userId) {
     return res.status(401).json({ code: 401, message: '未授权，请先登录' });
@@ -730,8 +756,8 @@ router.delete('/history/clear', async (req, res) => {
  */
 router.post('/songs/play-sync/:songId', async (req, res) => {
   const { songId } = req.params;
-  // 从 JWT 中间件获取用户ID，如果没有则返回错误
-  const userId = req.user ? req.user.id : 1;
+  // 从 JWT 获取真实 userId
+  const userId = await getUserIdFromToken(req);
 
   if (!userId) {
     return res.status(401).json({ code: 401, message: '未授权' });

@@ -23,9 +23,9 @@ app.use(
 }).unless({
   path: [
     '/api/auth/login',
-    '/api/songs','/api/history', 
-    '/api/history/clear', 
-    { url: /^\/api\/songs/} 
+    '/api/auth/register',
+    '/api/status',
+    '/'
   ] 
 }))
 app.get('/', (req, res) => {
