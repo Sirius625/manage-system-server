@@ -481,11 +481,11 @@ router.get('/songs', async (req, res) => {
   const pageSize = parseInt(req.query.pageSize) || 10;
   const { keyword } = req.query;
 
-  // 从 JWT 获取真实 userId
+  // 从 JWT 获取真实 userId，未登录时返回空数据
   const userId = await getUserIdFromToken(req);
 
   if (!userId) {
-    return res.status(401).json({ code: 401, message: '未授权，请先登录' });
+    return res.json({ code: 200, data: [], total: 0, page, pageSize });
   }
 
   // 计算偏移量
@@ -636,11 +636,11 @@ router.get('/history', async (req, res) => {
   const pageSize = parseInt(req.query.pageSize) || 50;
   const { keyword } = req.query; // 搜索关键词
   
-  // 从 JWT 获取真实 userId
+  // 从 JWT 获取真实 userId，未登录时返回空数据
   const userId = await getUserIdFromToken(req);
 
   if (!userId) {
-    return res.status(401).json({ code: 401, message: '未授权，请先登录' });
+    return res.json({ code: 200, data: [], total: 0, page, pageSize });
   }
   
   // 计算偏移量 offset = (page - 1) * pageSize
