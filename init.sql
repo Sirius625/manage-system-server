@@ -1,6 +1,35 @@
 CREATE DATABASE IF NOT EXISTS management_system CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE management_system;
 
+-- 检查并创建 liked_songs 表
+CREATE TABLE IF NOT EXISTS liked_songs (
+  id BIGINT UNSIGNED NOT NULL COMMENT '歌曲ID',
+  name VARCHAR(255) NOT NULL COMMENT '歌曲名称',
+  ar JSON NOT NULL COMMENT '艺术家列表, 格式: [{"name": "Artist Name"}]',
+  al JSON DEFAULT NULL COMMENT '专辑信息, 格式: {"picUrl": "...", "name": "..."}',
+  dt INT UNSIGNED NOT NULL COMMENT '歌曲时长(毫秒)',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '收藏时间',
+  user_id INT UNSIGNED NOT NULL COMMENT '用户ID',
+  play_count INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '播放次数',
+  PRIMARY KEY (id),
+  INDEX idx_name (name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户喜欢的歌曲列表';
+
+-- 检查并创建 history_songs 表
+CREATE TABLE IF NOT EXISTS history_songs (
+  id BIGINT UNSIGNED NOT NULL COMMENT '歌曲ID',
+  name VARCHAR(255) NOT NULL COMMENT '歌曲名称',
+  ar JSON NOT NULL COMMENT '艺术家列表, 格式: [{"name": "Artist Name"}]',
+  al JSON DEFAULT NULL COMMENT '专辑信息, 格式: {"picUrl": "...", "name": "..."}',
+  dt INT UNSIGNED NOT NULL COMMENT '歌曲时长(毫秒)',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '收藏时间',
+  user_id INT UNSIGNED NOT NULL COMMENT '用户ID',
+  play_count INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '播放次数',
+  PRIMARY KEY (id),
+  INDEX idx_name (name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户播放历史歌曲列表';
+
+
 CREATE TABLE IF NOT EXISTS users (
   id INT PRIMARY KEY AUTO_INCREMENT,
   name VARCHAR(100) NOT NULL UNIQUE,
@@ -9,6 +38,7 @@ CREATE TABLE IF NOT EXISTS users (
   role VARCHAR(50) NOT NULL,
   avatar VARCHAR(255) DEFAULT '',
   status VARCHAR(50) NOT NULL DEFAULT '正常',
+  remark VARCHAR(255) DEFAULT '',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -63,6 +93,8 @@ CREATE TABLE IF NOT EXISTS after_sales (
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
 );
+
+
 
 INSERT IGNORE INTO users (id, name, password, email, role, status) VALUES
 (3001, 'admin', '$2b$10$5wzd/o4.lE7xiVl7J0H7puDUtGER8nOJro8FRY5m5a0XaDqg.Qk86', 'admin@example.com', '管理员', '正常'),

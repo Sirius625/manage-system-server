@@ -475,4 +475,314 @@ router.get('/analytics', async (req, res) => {
   }
 })
 
+router.get('/songs', async (req, res) => {
+  // 获取分页参数，默认第1页，每页10条
+  const page = parseInt(req.query.page) || 1;
+  const pageSize = parseInt(req.query.pageSize) || 10;
+  const { keyword } = req.query;
+
+  // 计算偏移量
+  const offset = (page - 1) * pageSize;
+
+  let sql = 'SELECT * FROM liked_songs';
+  const conditions = [];
+  const values = [];
+
+  try {
+    if (keyword) {
+      const isNumeric = /^\d+$/.test(keyword);
+      if (isNumeric) {
+        conditions.push('id = ?');
+        values.push(keyword);
+      } else {
+        conditions.push('(name LIKE ? OR (JSON_LENGTH(ar) > 0 AND JSON_EXTRACT(ar, "$[0].name") LIKE ?))');
+        const likeParam = `%${keyword}%`;
+        values.push(likeParam, likeParam);
+      }
+    }
+
+    if (conditions.length > 0) {
+      sql += ' WHERE ' + conditions.join(' AND ');
+    }
+    
+    // 先查询总数
+    const countSql = 'SELECT COUNT(*) as total FROM liked_songs' + (conditions.length > 0 ? ' WHERE ' + conditions.join(' AND ') : '');
+    const [countResult] = await queryAsync(countSql, values);
+    const total = countResult[0]?.total;
+
+    // 再查询分页数据
+    sql += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
+    values.push(pageSize, offset);
+    
+    const rows = await queryAsync(sql, values);
+
+    res.json({ 
+      code: 200, 
+      data: rows, 
+      total,
+      page,
+      pageSize
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ code: 500, message: 'Server Error' });
+  }
+});
+
+// 新增/删除接口：根据 ID 存在性自动切换操作
+
+router.post('/songs', async (req, res) => {
+  const { id, name, ar, al, dt } = req.body;
+  // 实际项目中应从 req.user 或 session 获取 userId
+  const userId = req.user ? req.user.id : 1; 
+
+  if (!id) {
+    return res.status(400).json({ code: 400, message: '缺少必要参数: id' });
+  }
+
+  try {
+    // 1. 检查歌曲是否已存在
+    const checkSql = 'SELECT id FROM liked_songs WHERE id = ?';
+    const existing = await queryAsync(checkSql, [id]);
+
+    if (existing && existing.length > 0) {
+      // 2. 存在则删除
+      const deleteSql = 'DELETE FROM liked_songs WHERE id = ?';
+      await queryAsync(deleteSql, [id]);
+      return res.json({ code: 200, message: '已取消喜欢', action: 'deleted' });
+    } else {
+      // 3. 不存在则添加
+      const artistJson = Array.isArray(ar) ? JSON.stringify(ar) : ar;
+      const albumJson = al ? (typeof al === 'object' ? JSON.stringify(al) : al) : null;
+      
+      const insertSql = 'INSERT INTO liked_songs (id, name, ar, al, dt, user_id, play_count) VALUES (?, ?, ?, ?, ?, ?, 0)';
+      await queryAsync(insertSql, [id, name, artistJson, albumJson, dt, userId]);
+      
+      return res.json({ code: 200, message: '已添加喜欢', action: 'added' });
+    }
+  } catch (error) {
+    console.error('操作失败:', error);
+    res.status(500).json({ code: 500, message: '服务器内部错误', error: error.message });
+  }
+});
+
+/**
+ * 添加播放历史
+ * 逻辑：如果歌曲已存在，则更新播放时间和播放次数；如果不存在，则插入新记录。
+ */
+router.post('/history', async (req, res) => {
+  const { id, name, ar, al, dt } = req.body;
+  // 实际项目中应从 session/token 中获取真实 userId
+  const userId = req.user ? req.user.id : 1; 
+
+  if (!id || !name || !dt) {
+    return res.status(400).json({ code: 400, message: '缺少必要参数: id, name, dt' });
+  }
+
+  try {
+    // 1. 检查是否已存在该用户的这条播放记录
+    const checkSql = 'SELECT id, play_count FROM history_songs WHERE id = ? AND user_id = ?';
+    const existing = await queryAsync(checkSql, [id, userId]);
+
+    if (existing && existing.length > 0) {
+      // 2. 存在则更新：刷新时间，播放次数+1
+      const newPlayCount = existing[0].play_count + 1;
+      const updateSql = 'UPDATE history_songs SET created_at = CURRENT_TIMESTAMP, play_count = ? WHERE id = ? AND user_id = ?';
+      await queryAsync(updateSql, [newPlayCount, id, userId]);
+      return res.json({ code: 200, message: '播放历史已更新', action: 'updated', play_count: newPlayCount });
+    } else {
+      // 3. 不存在则插入
+      // 处理 JSON 字段，确保存入的是字符串格式（如果 mysql2 配置未自动序列化）
+      const artistJson = Array.isArray(ar) ? JSON.stringify(ar) : ar;
+      const albumJson = al ? (typeof al === 'object' ? JSON.stringify(al) : al) : null;
+
+      const insertSql = `INSERT INTO history_songs (id, name, ar, al, dt, user_id, play_count, created_at) 
+                         VALUES (?, ?, ?, ?, ?, ?, 1, CURRENT_TIMESTAMP)`;
+      await queryAsync(insertSql, [id, name, artistJson, albumJson, dt, userId]);
+      
+      return res.json({ code: 200, message: '已添加播放历史', action: 'added' });
+    }
+  } catch (error) {
+    console.error('添加播放历史失败:', error);
+    res.status(500).json({ code: 500, message: '服务器内部错误', error: error.message });
+  }
+});
+
+router.get('/history', async (req, res) => {
+  // 1. 获取分页参数，默认第1页，每页20条
+  const page = parseInt(req.query.page) || 1;
+  const pageSize = parseInt(req.query.pageSize) || 50;
+  const { keyword } = req.query; // 搜索关键词
+  
+  // 实际项目中应从 session/token 中获取真实 userId
+  const userId = req.user ? req.user.id : 1; 
+  
+  // 计算偏移量 offset = (page - 1) * pageSize
+  const offset = (page - 1) * pageSize;
+  
+  // 2. 构建查询条件
+  const conditions = ['user_id = ?'];
+  const values = [userId];
+
+  try {
+    // 如果有搜索关键词，添加模糊查询条件
+    if (keyword) {
+      const isNumeric = /^\d+$/.test(keyword);
+      if (isNumeric) {
+        // 如果是数字，尝试匹配歌曲ID
+        conditions.push('id = ?');
+        values.push(keyword);
+      } else {
+        // 如果是文本，匹配歌名或艺术家名称
+        // JSON_SEARCH 用于在 JSON 数组中查找包含特定字符串的元素
+        conditions.push('(name LIKE ? OR JSON_SEARCH(ar, "one", ?) IS NOT NULL)');
+        const likeParam = `%${keyword}%`;
+        values.push(likeParam, likeParam);
+      }
+    }
+
+    const whereClause = 'WHERE ' + conditions.join(' AND ');
+
+    // 3. 获取总记录数 (用于前端分页显示)
+    const countSql = `SELECT COUNT(*) as total FROM history_songs ${whereClause}`;
+    const countResult = await queryAsync(countSql, values);
+    const total = countResult[0]?.total || 0;
+
+    // 4. 获取当前页数据
+    // 按播放时间(created_at)倒序排列，最近播放的在前面
+    const listSql = `SELECT * FROM history_songs ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`;
+    const listValues = [...values, pageSize, offset];
+    const rows = await queryAsync(listSql, listValues);
+
+    // 5. 处理返回数据：解析 JSON 字段
+    // MySQL 驱动通常返回 JSON 字段为字符串，需要手动 parse 以便前端直接使用
+    const formattedRows = rows.map(row => {
+      return {
+        ...row,
+        ar: typeof row.ar === 'string' ? JSON.parse(row.ar) : row.ar,
+        al: typeof row.al === 'string' ? JSON.parse(row.al) : row.al
+      };
+    });
+
+    res.json({ 
+      code: 200, 
+      data: formattedRows, 
+      total,
+      page,
+      pageSize
+    });
+  } catch (error) {
+    console.error('查询播放历史失败:', error);
+    res.status(500).json({ code: 500, message: '服务器内部错误', error: error.message });
+  }
+});
+
+/**
+ * 清空当前用户的所有播放历史记录
+ * DELETE /history/clear
+ */
+router.delete('/history/clear', async (req, res) => {
+  // 实际项目中应从 session/token 中获取真实 userId
+  const userId = req.user ? req.user.id : 1;
+
+  if (!userId) {
+    return res.status(401).json({ code: 401, message: '未授权，请先登录' });
+  }
+
+  try {
+    // 执行删除操作，只删除当前用户的记录
+    const deleteSql = 'DELETE FROM history_songs WHERE user_id = ?';
+    const result = await queryAsync(deleteSql, [userId]);
+
+    // result.affectedRows 表示被删除的行数
+    const deletedCount = result.affectedRows || 0;
+
+    if (deletedCount > 0) {
+      return res.json({ 
+        code: 200, 
+        message: '播放历史已清空', 
+        data: { deletedCount } 
+      });
+    } else {
+      return res.json({ 
+        code: 200, 
+        message: '没有可清空的记录', 
+        data: { deletedCount: 0 } 
+      });
+    }
+  } catch (error) {
+    console.error('清空播放历史失败:', error);
+    res.status(500).json({ 
+      code: 500, 
+      message: '服务器内部错误', 
+      error: error.message 
+    });
+  }
+});
+
+
+/**
+ * 记录播放并同步更新播放次数
+ * GET /songs/play-sync/:id
+ * 逻辑：
+ * 1. 在 history_songs 中记录/更新播放信息，并将 play_count + 1
+ * 2. 检查 liked_songs 中是否存在该歌曲，如果存在，也将 play_count + 1
+ */
+router.post('/songs/play-sync/:songId', async (req, res) => {
+  const { songId } = req.params;
+  // 从 JWT 中间件获取用户ID，如果没有则返回错误
+  const userId = req.user ? req.user.id : 1;
+
+  if (!userId) {
+    return res.status(401).json({ code: 401, message: '未授权' });
+  }
+
+  // 从请求体获取歌曲详细信息（如果是第一次播放，需要这些信息来插入历史表）
+  // 如果前端只传 ID，后端可能需要先去音乐服务获取详情，这里假设前端传了必要信息
+  const { name, ar, al, dt } = req.body;
+
+  try {
+    // 1. 处理播放历史 (history_songs)
+    // 检查是否已存在该用户对该歌曲的历史记录
+    const checkHistorySql = 'SELECT id, play_count FROM history_songs WHERE id = ? AND user_id = ?';
+    const historyRecord = await queryAsync(checkHistorySql, [songId, userId]);
+
+    if (historyRecord && historyRecord.length > 0) {
+      // 存在则更新播放次数 +1
+      const newPlayCount = (historyRecord[0].play_count || 0) + 1;
+      const updateHistorySql = 'UPDATE history_songs SET play_count = ?, created_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?';
+      await queryAsync(updateHistorySql, [newPlayCount, songId, userId]);
+    } else {
+      // 不存在则插入新记录
+      // 注意：ar 和 al 可能需要根据实际数据结构进行 JSON.stringify 处理
+      const artistJson = Array.isArray(ar) ? JSON.stringify(ar) : ar;
+      const albumJson = al ? (typeof al === 'object' ? JSON.stringify(al) : al) : null;
+      
+      const insertHistorySql = `
+        INSERT INTO history_songs (id, name, ar, al, dt, user_id, play_count) 
+        VALUES (?, ?, ?, ?, ?, ?, 1)
+      `;
+      await queryAsync(insertHistorySql, [songId, name, artistJson, albumJson, dt, userId]);
+    }
+
+    // 2. 处理喜欢歌曲 (liked_songs)
+    // 检查该歌曲是否在用户的喜欢列表中
+    const checkLikedSql = 'SELECT id, play_count FROM liked_songs WHERE id = ? AND user_id = ?';
+    const likedRecord = await queryAsync(checkLikedSql, [songId, userId]);
+
+    if (likedRecord && likedRecord.length > 0) {
+      // 如果是喜欢的歌曲，播放次数 +1
+      const newLikedPlayCount = (likedRecord[0].play_count || 0) + 1;
+      const updateLikedSql = 'UPDATE liked_songs SET play_count = ? WHERE id = ? AND user_id = ?';
+      await queryAsync(updateLikedSql, [newLikedPlayCount, songId, userId]);
+    }
+
+    return res.json({ code: 200, message: '播放记录同步成功' });
+
+  } catch (error) {
+    console.error('同步播放计数失败:', error);
+    res.status(500).json({ code: 500, message: '服务器内部错误', error: error.message });
+  }
+});
+
 module.exports = router

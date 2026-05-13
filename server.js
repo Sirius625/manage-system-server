@@ -6,7 +6,7 @@ const path = require('path')
 const { expressjwt } = require('express-jwt');
 
 const app = express()
-const port = process.env.PORT || 3000
+const port = process.env.PORT || 3030
 const apiRouter = require('./routes/api')
 const { pool, initDatabase, hashLegacyPasswords } = require('./db')
 
@@ -15,7 +15,19 @@ app.use(bodyParser.json({ limit: '10mb' }))
 app.use(bodyParser.urlencoded({ extended: true }))
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')))
 const secretKey = 'my_secret_key'
-app.use(expressjwt({ secret: secretKey, algorithms: ['HS256'], requestProperty: 'user' }).unless({ path: ['/api/auth/login'] }))
+app.use(
+  expressjwt({
+    secret: secretKey,
+    algorithms: ['HS256'],
+    requestProperty: 'user' 
+}).unless({
+  path: [
+    '/api/auth/login',
+    '/api/songs','/api/history', 
+    '/api/history/clear', 
+    { url: /^\/api\/songs/} 
+  ] 
+}))
 app.get('/', (req, res) => {
   res.json({ message: 'Project server is running.' })
 })
