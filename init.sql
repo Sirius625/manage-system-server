@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS liked_songs (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '收藏时间',
   user_id INT UNSIGNED NOT NULL COMMENT '用户ID',
   play_count INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '播放次数',
-  PRIMARY KEY (id),
+  PRIMARY KEY (id, user_id),
   INDEX idx_name (name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户喜欢的歌曲列表';
 
@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS history_songs (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '收藏时间',
   user_id INT UNSIGNED NOT NULL COMMENT '用户ID',
   play_count INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '播放次数',
-  PRIMARY KEY (id),
+  PRIMARY KEY (id, user_id),
   INDEX idx_name (name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户播放历史歌曲列表';
 
