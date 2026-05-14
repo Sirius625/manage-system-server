@@ -882,7 +882,7 @@ router.post('/images/upload', async (req, res) => {
  * 权限逻辑：
  * - 未登录用户：只能看到公开图片 (is_public = 1)
  * - 已登录用户：可以看到自己的所有图片 + 他人的公开图片
- */ 
+ */
 router.get('/images', async (req, res) => {
   try {
     const page = Number(req.query.page) || 1
