@@ -1,4 +1,5 @@
-require('dotenv').config()
+const envFile = process.env.NODE_ENV === 'production' ? '.env' : '.env.development'
+require('dotenv').config({ path: envFile })
 const express = require('express')
 const cors = require('cors')
 const bodyParser = require('body-parser')

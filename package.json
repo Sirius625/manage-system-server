@@ -4,7 +4,8 @@
   "description": "Node.js backend for management system",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "start:prod": "set NODE_ENV=production&& node server.js"
   },
   "keywords": [],
   "author": "",
