@@ -848,14 +848,23 @@ router.post('/images/upload', async (req, res) => {
       return res.status(400).json({ message: '缺少必要参数: title, imageBase64' })
     }
 
-    // 从 JWT 获取上传者
+    // 从 JWT 获取上传者（手动解析，支持有 token 和无 token 两种情况）
     let author = '匿名'
     let userId = null
-    if (req.user && req.user.username) {
-      const users = await queryAsync('SELECT id, name FROM users WHERE name = ?', [req.user.username])
-      if (users.length > 0) {
-        userId = users[0].id
-        author = users[0].name
+    const authHeader = req.headers.authorization
+    if (authHeader) {
+      try {
+        const token = authHeader.replace('Bearer ', '')
+        const decoded = jwt.verify(token, secretKey)
+        if (decoded && decoded.username) {
+          const users = await queryAsync('SELECT id, name FROM users WHERE name = ?', [decoded.username])
+          if (users.length > 0) {
+            userId = users[0].id
+            author = users[0].name
+          }
+        }
+      } catch (e) {
+        // token 无效，视为匿名用户
       }
     }
 
