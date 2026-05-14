@@ -843,16 +843,18 @@ const saveImageFile = (base64Data) => {
  */
 router.post('/images/upload', async (req, res) => {
   try {
-    const { title, description, imageBase64 } = req.body
+    const { title, description, category, isPublic, imageBase64 } = req.body
     if (!title || !imageBase64) {
       return res.status(400).json({ message: '缺少必要参数: title, imageBase64' })
     }
 
     // 从 JWT 获取上传者
     let author = '匿名'
+    let userId = null
     if (req.user && req.user.username) {
-      const users = await queryAsync('SELECT name FROM users WHERE name = ?', [req.user.username])
+      const users = await queryAsync('SELECT id, name FROM users WHERE name = ?', [req.user.username])
       if (users.length > 0) {
+        userId = users[0].id
         author = users[0].name
       }
     }
@@ -862,8 +864,8 @@ router.post('/images/upload', async (req, res) => {
 
     // 插入数据库
     const result = await queryAsync(
-      'INSERT INTO images (title, description, url, path, author) VALUES (?, ?, ?, ?, ?)',
-      [title, description || '', url, filePath, author]
+      'INSERT INTO images (title, description, category, url, path, author, user_id, is_public) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [title, description || '', category || '其他', url, filePath, author, userId, isPublic !== undefined ? (isPublic ? 1 : 0) : 1]
     )
 
     const inserted = await queryAsync('SELECT * FROM images WHERE id = ?', [result.insertId])
@@ -873,17 +875,48 @@ router.post('/images/upload', async (req, res) => {
   }
 })
 
+
 /**
  * 获取图片列表
  * GET /api/images
+ * 权限逻辑：
+ * - 未登录用户：只能看到公开图片 (is_public = 1)
+ * - 已登录用户：可以看到自己的所有图片 + 他人的公开图片
  */
 router.get('/images', async (req, res) => {
   try {
     const page = Number(req.query.page) || 1
     const pageSize = Number(req.query.pageSize) || 20
     const offset = (page - 1) * pageSize
-    let conditions = ['1=1']
+    let conditions = []
     const params = []
+
+    // 尝试从 JWT 获取当前用户
+    let currentUserId = null
+    const authHeader = req.headers.authorization
+    if (authHeader) {
+      try {
+        const token = authHeader.replace('Bearer ', '')
+        const decoded = jwt.verify(token, secretKey)
+        if (decoded && decoded.username) {
+          const users = await queryAsync('SELECT id FROM users WHERE name = ?', [decoded.username])
+          if (users.length > 0) {
+            currentUserId = users[0].id
+          }
+        }
+      } catch (e) {
+        // token 无效，视为未登录用户
+      }
+    }
+
+    if (currentUserId) {
+      // 已登录用户：可以看到自己的所有图片 + 他人的公开图片
+      conditions.push('(user_id = ? OR is_public = 1)')
+      params.push(currentUserId)
+    } else {
+      // 未登录用户：只能看到公开图片
+      conditions.push('is_public = 1')
+    }
 
     if (req.query.keyword) {
       const keyword = `%${String(req.query.keyword).trim()}%`
@@ -891,7 +924,22 @@ router.get('/images', async (req, res) => {
       params.push(keyword, keyword)
     }
 
-    const where = `WHERE ${conditions.join(' AND ')}`
+    if (req.query.category) {
+      conditions.push('category = ?')
+      params.push(req.query.category)
+    }
+
+    if (req.query.isPublic !== undefined && req.query.isPublic !== '') {
+      conditions.push('is_public = ?')
+      params.push(req.query.isPublic === '1' || req.query.isPublic === 'true' ? 1 : 0)
+    }
+
+    if (req.query.userId) {
+      conditions.push('user_id = ?')
+      params.push(req.query.userId)
+    }
+
+    const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
     const totalResult = await queryAsync(`SELECT COUNT(*) AS total FROM images ${where}`, params)
     const rows = await queryAsync(
       `SELECT * FROM images ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
@@ -903,6 +951,7 @@ router.get('/images', async (req, res) => {
     res.status(500).json({ message: err.message })
   }
 })
+
 
 /**
  * 删除图片

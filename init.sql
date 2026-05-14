@@ -136,9 +136,51 @@ CREATE TABLE IF NOT EXISTS images (
   id INT PRIMARY KEY AUTO_INCREMENT,
   title VARCHAR(255) NOT NULL COMMENT '图片标题',
   description TEXT DEFAULT NULL COMMENT '图片描述',
+  category VARCHAR(50) DEFAULT '其他' COMMENT '分类：运动/日常/游戏/其他',
   url VARCHAR(500) NOT NULL COMMENT '图片访问URL',
   path VARCHAR(500) NOT NULL COMMENT '图片存储路径',
   author VARCHAR(100) DEFAULT '' COMMENT '上传者',
   likes INT DEFAULT 0 COMMENT '点赞数',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '上传时间'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='图片管理表';
+
+-- 为 images 表添加 category 字段（如果表已存在）
+SET @category_exists = (
+  SELECT COUNT(*)
+  FROM information_schema.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'images'
+    AND COLUMN_NAME = 'category'
+);
+SET @sql2 = IF(@category_exists = 0, 'ALTER TABLE images ADD COLUMN category VARCHAR(50) DEFAULT "其他" COMMENT "分类：运动/日常/游戏/其他"', 'SELECT 1');
+PREPARE stmt2 FROM @sql2;
+EXECUTE stmt2;
+DEALLOCATE PREPARE stmt2;
+
+-- 为 images 表添加 user_id 字段（如果表已存在）
+SET @user_id_exists = (
+  SELECT COUNT(*)
+  FROM information_schema.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'images'
+    AND COLUMN_NAME = 'user_id'
+);
+SET @sql3 = IF(@user_id_exists = 0, 'ALTER TABLE images ADD COLUMN user_id INT DEFAULT NULL COMMENT "上传用户ID"', 'SELECT 1');
+PREPARE stmt3 FROM @sql3;
+EXECUTE stmt3;
+DEALLOCATE PREPARE stmt3;
+
+-- 为 images 表添加 is_public 字段（如果表已存在）
+SET @is_public_exists = (
+  SELECT COUNT(*)
+  FROM information_schema.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'images'
+    AND COLUMN_NAME = 'is_public'
+);
+SET @sql4 = IF(@is_public_exists = 0, 'ALTER TABLE images ADD COLUMN is_public TINYINT(1) DEFAULT 1 COMMENT "是否公开：1公开 0私密"', 'SELECT 1');
+PREPARE stmt4 FROM @sql4;
+EXECUTE stmt4;
+DEALLOCATE PREPARE stmt4;
+
+
