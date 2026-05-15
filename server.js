@@ -27,6 +27,8 @@ app.use(
     '/api/auth/register',
     '/api/status',
     '/api/images',
+    '/api/history',
+    '/api/songs/play-sync',
     { url: /^\/api\/images\/\d+$/, methods: ['DELETE'] },
     '/'
   ] 
