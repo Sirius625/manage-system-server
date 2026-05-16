@@ -1,8 +1,25 @@
+/**
+ * 播放历史管理路由
+ * 
+ * 提供播放历史的添加、查询、清空等功能。
+ * 
+ * @module routes/history
+ */
+
 const express = require('express')
 const router = express.Router()
 const { queryAsync, getUserIdFromToken } = require('./common')
 
-// 添加播放历史
+/**
+ * 添加播放历史
+ * POST /api/history
+ * 
+ * @body {string|number} id - 歌曲ID
+ * @body {string} name - 歌曲名称
+ * @body {Array} ar - 歌手列表
+ * @body {object} al - 专辑信息
+ * @body {number} dt - 歌曲时长
+ */
 router.post('/', async (req, res) => {
   const { id, name, ar, al, dt } = req.body
   const userId = await getUserIdFromToken(req)

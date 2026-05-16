@@ -1,8 +1,24 @@
+/**
+ * 商品管理路由
+ * 
+ * 提供商品列表查询、新增、详情查看、库存更新、批量操作等功能。
+ * 
+ * @module routes/products
+ */
+
 const express = require('express')
 const router = express.Router()
 const { queryAsync } = require('./common')
 
-// 商品列表
+/**
+ * 获取商品列表（分页）
+ * GET /api/products
+ * 
+ * @query {number} page - 页码（默认1）
+ * @query {number} pageSize - 每页条数（默认5）
+ * @query {string} keyword - 搜索关键词
+ * @query {string} category - 按分类筛选
+ */
 router.get('/', async (req, res) => {
   try {
     const page = Number(req.query.page) || 1

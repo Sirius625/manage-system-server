@@ -1,8 +1,24 @@
+/**
+ * 订单管理路由
+ * 
+ * 提供订单列表查询、详情查看、状态更新、批量操作等功能。
+ * 
+ * @module routes/orders
+ */
+
 const express = require('express')
 const router = express.Router()
 const { queryAsync, buildFilter } = require('./common')
 
-// 订单列表
+/**
+ * 获取订单列表（分页）
+ * GET /api/orders
+ * 
+ * @query {number} page - 页码（默认1）
+ * @query {number} pageSize - 每页条数（默认5）
+ * @query {string} keyword - 搜索关键词
+ * @query {string} status - 按状态筛选
+ */
 router.get('/', async (req, res) => {
   try {
     const page = Number(req.query.page) || 1

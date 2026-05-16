@@ -1,8 +1,23 @@
+/**
+ * 歌曲管理路由
+ * 
+ * 提供喜欢的歌曲列表查询、喜欢/取消喜欢、播放记录同步等功能。
+ * 
+ * @module routes/songs
+ */
+
 const express = require('express')
 const router = express.Router()
 const { queryAsync, getUserIdFromToken } = require('./common')
 
-// 获取喜欢的歌曲列表
+/**
+ * 获取喜欢的歌曲列表（分页）
+ * GET /api/songs
+ * 
+ * @query {number} page - 页码（默认1）
+ * @query {number} pageSize - 每页条数（默认10）
+ * @query {string} keyword - 搜索关键词（按歌曲名或歌手名）
+ */
 router.get('/', async (req, res) => {
   const page = parseInt(req.query.page) || 1
   const pageSize = parseInt(req.query.pageSize) || 10

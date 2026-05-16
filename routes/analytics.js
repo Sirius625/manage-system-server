@@ -1,8 +1,24 @@
+/**
+ * 数据分析 & 仪表盘路由
+ * 
+ * 提供仪表盘统计数据、销售趋势分析、商品分类占比等功能。
+ * 
+ * @module routes/analytics
+ */
+
 const express = require('express')
 const router = express.Router()
 const { queryAsync } = require('./common')
 
-// 仪表盘统计
+/**
+ * 获取仪表盘统计数据
+ * GET /api/dashboard/stats
+ * 
+ * @returns {object} totalOrders - 总订单数
+ * @returns {number} totalRevenue - 总营收
+ * @returns {number} activeUsers - 活跃用户数
+ * @returns {number} pendingShipments - 待发货订单数
+ */
 router.get('/stats', async (req, res) => {
   try {
     const orderResult = await queryAsync('SELECT COUNT(*) AS totalOrders, SUM(amount) AS totalRevenue FROM orders')

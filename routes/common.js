@@ -70,6 +70,30 @@ const saveImageFile = (base64Data) => {
 }
 
 /**
+ * 保存上传的视频文件
+ */
+const saveVideoFile = (base64Data) => {
+  const matches = String(base64Data).match(/^data:(video\/\w+);base64,(.+)$/)
+  if (!matches) {
+    throw new Error('视频数据格式不正确')
+  }
+
+  const ext = matches[1].split('/')[1]
+  const buffer = Buffer.from(matches[2], 'base64')
+  const uploadDir = path.resolve(__dirname, '..', 'uploads', 'videos')
+  fs.mkdirSync(uploadDir, { recursive: true })
+
+  const fileName = `video-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
+  const filePath = path.join(uploadDir, fileName)
+  fs.writeFileSync(filePath, buffer)
+
+  return {
+    url: `/uploads/videos/${fileName}`,
+    path: filePath
+  }
+}
+
+/**
  * 构建通用筛选条件
  */
 const buildFilter = (query, tableAlias = '') => {
@@ -109,5 +133,6 @@ module.exports = {
   getUserIdFromToken,
   saveAvatarFile,
   saveImageFile,
+  saveVideoFile,
   buildFilter
 }

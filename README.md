@@ -62,7 +62,12 @@
 - `POST /api/images/upload` - 上传图片（支持 Base64，含标题、描述、分类、可见性）
 - `DELETE /api/images/:id` - 删除图片（含物理文件删除，权限校验）
 
-### 📝 文章管理
+### 🎬 视频管理
+- `GET /api/videos` - 视频列表（分页、关键词、可见性筛选，含权限控制）
+- `POST /api/videos/upload` - 上传视频（支持 Base64，含标题、描述、可见性，最大 100MB）
+- `DELETE /api/videos/:id` - 删除视频（含物理文件删除，权限校验）
+
+### � 文章管理
 - `GET /api/articles` - 文章列表（分页、分类筛选、关键词搜索）
 - `GET /api/articles/:id` - 文章详情（自动增加浏览量）
 - `POST /api/articles` - 创建文章（支持 Markdown 内容、标签）
@@ -122,6 +127,32 @@ DB_NAME=management_system
 | `history_songs` | 播放历史表 |
 | `images` | 图片管理表（含分类、可见性、上传者） |
 | `articles` | 博客文章表（含 Markdown 内容、标签、分类） |
+
+## 项目结构
+
+```
+project-server/
+├── server.js                 # 服务入口（Express 配置、中间件、JWT 认证）
+├── db.js                     # 数据库连接池与初始化模块
+├── init.sql                  # 数据库初始化 SQL 脚本
+├── add_category_column.js    # 数据库迁移脚本
+├── .env                      # 生产环境变量
+├── .env.development          # 开发环境变量
+├── routes/                   # API 路由模块
+│   ├── api.js                # 路由入口（挂载所有子路由）
+│   ├── common.js             # 通用工具函数（查询封装、文件保存、筛选构建）
+│   ├── users.js              # 用户管理 & 认证路由
+│   ├── orders.js             # 订单管理路由
+│   ├── products.js           # 商品管理路由
+│   ├── after-sales.js        # 售后管理路由
+│   ├── analytics.js          # 数据分析路由
+│   ├── songs.js              # 歌曲管理路由
+│   ├── history.js            # 播放历史路由
+│   ├── images.js             # 图片管理路由
+│   └── articles.js           # 文章管理路由
+└── uploads/                  # 上传文件存储目录
+    └── images/               # 上传图片存储目录
+```
 
 ## 默认账号
 
