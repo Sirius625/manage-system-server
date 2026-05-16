@@ -28,9 +28,12 @@ app.use(
     '/api/status',
     '/api/images',
     '/api/history',
-    '/api/songs/play-sync',
-    { url: /^\/api\/images\/\d+$/, methods: ['DELETE'] },
+    { url: /^\/api\/songs\/play-sync/, methods: ['POST'] },
+    { url: /^\/api\/articles$/, methods: ['GET'] },
+    { url: /^\/api\/articles\/categories$/, methods: ['GET'] },
+    { url: /^\/api\/articles\/\d+$/, methods: ['GET'] },
     '/'
+
   ] 
 }))
 app.get('/', (req, res) => {

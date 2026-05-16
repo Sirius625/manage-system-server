@@ -143,8 +143,18 @@ router.delete('/:id', async (req, res) => {
       return res.status(404).json({ message: '图片未找到' })
     }
 
-    // 删除物理文件
+    // 权限校验：只有上传者或管理员可以删除
+    const { author, userId } = await getCurrentUser(req)
     const image = images[0]
+    if (image.user_id && image.user_id !== userId) {
+      // 检查是否为管理员
+      const users = await queryAsync('SELECT role FROM users WHERE id = ?', [userId])
+      if (!users.length || users[0].role !== '管理员') {
+        return res.status(403).json({ message: '无权删除此图片' })
+      }
+    }
+
+    // 删除物理文件
     try {
       if (fs.existsSync(image.path)) {
         fs.unlinkSync(image.path)

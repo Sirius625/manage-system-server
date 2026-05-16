@@ -97,7 +97,8 @@ router.post('/play-sync/:songId', async (req, res) => {
   const userId = await getUserIdFromToken(req)
 
   if (!userId) {
-    return res.status(401).json({ code: 401, message: '未授权' })
+    // 未登录用户不记录播放次数，但不返回 401（避免前端清除登录状态）
+    return res.json({ code: 200, message: '游客模式，不记录播放次数', action: 'skipped' })
   }
 
   const { name, ar, al, dt } = req.body

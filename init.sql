@@ -170,7 +170,24 @@ PREPARE stmt3 FROM @sql3;
 EXECUTE stmt3;
 DEALLOCATE PREPARE stmt3;
 
+-- 博客文章表
+CREATE TABLE IF NOT EXISTS articles (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  title VARCHAR(255) NOT NULL COMMENT '文章标题',
+  content TEXT NOT NULL COMMENT '文章内容（Markdown）',
+  summary VARCHAR(500) DEFAULT '' COMMENT '文章摘要',
+  category VARCHAR(50) DEFAULT '未分类' COMMENT '文章分类',
+  tags JSON DEFAULT NULL COMMENT '标签列表',
+  cover VARCHAR(500) DEFAULT '' COMMENT '封面图片URL',
+  author VARCHAR(100) DEFAULT '匿名' COMMENT '作者',
+  likes INT DEFAULT 0 COMMENT '点赞数',
+  views INT DEFAULT 0 COMMENT '浏览量',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='博客文章表';
+
 -- 为 images 表添加 is_public 字段（如果表已存在）
+
 SET @is_public_exists = (
   SELECT COUNT(*)
   FROM information_schema.COLUMNS

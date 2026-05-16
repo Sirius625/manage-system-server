@@ -27,8 +27,10 @@ router.use('/analytics', require('./analytics'))
 router.use('/songs', require('./songs'))
 router.use('/history', require('./history'))
 router.use('/images', require('./images'))
+router.use('/articles', require('./articles'))
 
 // ==================== 认证路由 ====================
+
 router.use('/auth', require('./users'))
 
 module.exports = router

@@ -8,7 +8,8 @@ router.post('/', async (req, res) => {
   const userId = await getUserIdFromToken(req)
 
   if (!userId) {
-    return res.status(401).json({ code: 401, message: '未授权，请先登录' })
+    // 未登录用户不记录历史，但不返回 401（避免前端清除登录状态）
+    return res.json({ code: 200, message: '游客模式，不记录播放历史', action: 'skipped' })
   }
 
   if (!id || !name || !dt) {

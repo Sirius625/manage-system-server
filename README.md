@@ -57,6 +57,20 @@
 ### 📈 数据分析
 - `GET /api/analytics` - 获取销售趋势和商品分类占比数据
 
+### 🖼️ 图片管理
+- `GET /api/images` - 图片列表（分页、关键词、分类、可见性筛选）
+- `POST /api/images/upload` - 上传图片（支持 Base64，含标题、描述、分类、可见性）
+- `DELETE /api/images/:id` - 删除图片（含物理文件删除，权限校验）
+
+### 📝 文章管理
+- `GET /api/articles` - 文章列表（分页、分类筛选、关键词搜索）
+- `GET /api/articles/:id` - 文章详情（自动增加浏览量）
+- `POST /api/articles` - 创建文章（支持 Markdown 内容、标签）
+- `PUT /api/articles/:id` - 更新文章
+- `DELETE /api/articles/:id` - 删除文章（作者或管理员可操作）
+- `POST /api/articles/:id/like` - 点赞文章
+- `GET /api/articles/categories` - 获取所有文章分类
+
 ### 🩺 健康检查
 - `GET /api/status` - 数据库连接状态检查
 
@@ -76,16 +90,16 @@ npm install
 # 初始化数据库（执行 SQL 脚本）
 mysql -u root -p < init.sql
 
-# 启动服务
-npm start
-
-# 开发模式（热重载）
+# 启动服务（开发模式）
 npm run dev
+
+# 启动服务（生产模式）
+npm run start:prod
 ```
 
 ## 环境变量
 
-在 `.env` 中配置：
+在 `.env`（开发环境）或 `.env.development` 中配置：
 
 ```env
 PORT=3030
@@ -106,6 +120,8 @@ DB_NAME=management_system
 | `after_sales` | 售后记录表 |
 | `liked_songs` | 喜欢的歌曲表 |
 | `history_songs` | 播放历史表 |
+| `images` | 图片管理表（含分类、可见性、上传者） |
+| `articles` | 博客文章表（含 Markdown 内容、标签、分类） |
 
 ## 默认账号
 
