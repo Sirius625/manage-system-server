@@ -63,7 +63,7 @@ app.use(
     '/api/status',              // 健康检查接口无需认证
     '/api/images',              // 图片列表（公开图片可匿名访问）
     '/api/videos',              // 视频列表（公开视频可匿名访问）
-    '/api/history',             // 播放历史（游客可访问但不会记录）
+    // '/api/history',             // 播放历史（游客可访问但不会记录）
     { url: /^\/api\/songs\/play-sync/, methods: ['POST'] },  // 播放同步（游客可访问）
     { url: /^\/api\/articles$/, methods: ['GET'] },           // 文章列表公开访问
     { url: /^\/api\/articles\/categories$/, methods: ['GET'] }, // 文章分类公开访问

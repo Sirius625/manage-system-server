@@ -127,7 +127,10 @@ router.delete('/:id', async (req, res) => {
     }
     const articleAuthor = rows[0].author
     const currentUser = req.user?.username
-    if (currentUser && currentUser !== articleAuthor) {
+    if (!currentUser) {
+      return res.status(401).json({ success: false, message: '请先登录' })
+    }
+    if (currentUser !== articleAuthor) {
       // 检查是否为管理员
       const users = await queryAsync('SELECT role FROM users WHERE name = ?', [currentUser])
       if (!users.length || users[0].role !== '管理员') {
