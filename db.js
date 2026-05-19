@@ -6,7 +6,7 @@
  * @module db
  */
 
-const mysql = require('mysql2')
+const mysql = require('mysql')
 const bcrypt = require('bcryptjs')
 const fs = require('fs')
 const path = require('path')

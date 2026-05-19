@@ -2,7 +2,7 @@
  * 数据库用户初始化脚本
  * 使用 root 用户创建 management_system 用户并授权
  */
-const mysql = require('mysql2')
+const mysql = require('mysql')
 require('dotenv').config()
 
 const rootConfig = {
