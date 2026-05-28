@@ -40,7 +40,7 @@ router.get('/', async (req, res) => {
     const total = countResult[0]?.total || 0
 
     const rows = await queryAsync(
-      `SELECT id, title, summary, category, tags, author, likes, views, created_at, updated_at 
+      `SELECT id, title, content, summary, category, tags, author, cover, likes, views, created_at, updated_at 
        FROM articles ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
       [...params, Number(pageSize), offset]
     )
